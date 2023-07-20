@@ -1,0 +1,73 @@
+# Configuration file for trinag model and hyperparameter settings
+# of crop and weed dataset
+
+#'0,1,2,3'
+gpus_to_use: '1'
+DPI: 300
+LOG_WANDB:  False
+sanity_check: False
+
+
+project_name: 'FURROW_LINES'
+#'#'bean_aug_advent_carbonnier_new_data'
+experiment_name: 'Exp_6_Reg_epoch99'
+
+log_directory: "/home/user01/data/furrow_line/logs/"
+checkpoint_path: "/home/user01/data/furrow_line/chkpts/"
+predictions_dir: "/home/user01/data/furrow_line/preds/"
+
+# EVAL
+eval_gt: '/home/user01/data/furrow_line/eval/gt/'
+eval_pred: '/home/user01/data/furrow_line/eval/pred/'
+use_ocr: True
+
+iou_threshold: 0.5
+# Data loader parameters
+data_dir: "/home/user01/data/furrow_line/dataset/"
+# add sub dirs inside of train/val and test
+sub_directories: ['img/', 'depth/', 'line/', 'seg/']
+Normalize_data: True
+Shuffle_data: True
+
+pin_memory: True
+num_workers: 6
+num_classes: 2
+img_height: 384
+img_width: 768
+# 4 means output of network is 4 times downsampled than input.
+output_stride: 2
+input_channels: 3
+label_smoothing: 0.0
+batch_size: 1
+WEIGHT_DECAY: 0.00005
+AUX_LOSS_Weights: 0.4
+LAMBDA_ADV_MAIN: 0.001
+LAMBDA_ADV_AUX: 0.0002
+# only for training data
+Augment_data: True
+# Augmentation Prbabilities
+# shoudl be same legth
+step_epoch:    [0]
+#, 10, 15, 20, 25, 30]
+
+geometric_aug: [0.1]
+#, 0.1, 0.2, 0.4, 0.3, 0.3]
+noise_aug:     [0.1]
+#, 0.1, 0.2, 0.2, 0.2, 0.2]
+
+# Regularization SD 0.5 LS 1e-2
+stochastic_drop_path: 3e-1
+SD_mode: 'batch'
+layer_scaling_val: 1e-5
+
+# learning rate
+learning_rate: 0.01
+learning_rate_d: 0.0001
+lr_schedule: 'cos'
+lr_schedule_d: 'poly'
+epochs: 100 
+warmup_epochs: 1
+# one of 'batch_norm' or 'sync_bn' or 'layer_norm'
+norm_typ: 'sync_bn'
+BN_MOM: 0.9
+SyncBN_MOM: 3e-4
