@@ -12,65 +12,6 @@ import numpy as np
 from skimage import measure
 from scipy import ndimage as ndi
 from skimage import morphology  
-
-
-# def get_line_median(img, dilate=False):
-#     img[0:400,:] = 0
-#     h, w = img.shape
-#     # img = cv2.resize(img, (720,1280), interpolation=cv2.INTER_NEAREST)
-#     ret,img = cv2.threshold(img, 0, 1, cv2.THRESH_BINARY)
-#     # img[10:-10, 10:-10] = 0
-#     # img = img[10:-10, 10:-10]
-#     lines = measure.label(img)
-#     thinned_lines = np.zeros((img.shape[0], img.shape[1], len(np.unique(lines))))
-    
-#     for i in np.unique(lines):
-#         line = lines.copy()
-#         line[line!=i] = 0
-#         ret,line = cv2.threshold(line.astype(np.uint8), 0, 1, cv2.THRESH_BINARY)
-        
-#         thin_line1 = morphology.medial_axis(line.astype(np.uint8))
-#         thin_line2 = morphology.skeletonize(line.astype(np.uint8))
-
-#         # thin_line1[0:360,:] = 0
-#         # thin_line2[360:,:] = 0
-        
-#         thinned_lines[..., i] = thin_line1 #+ thin_line2
-    
-#     thinned_lines = np.sum(thinned_lines, axis=-1, dtype=np.uint8)
-#     if dilate:
-#         thinned_lines = cv2.dilate(thinned_lines, 
-#                                    cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5)),
-#                                    iterations = 1)
-#     # thinned_lines = cv2.resize(thinned_lines, (w,h), interpolation=cv2.INTER_NEAREST)
-#     return thinned_lines
-
-### Usage
-# img = cv2.imread('G:/test_img_20230623_181932_0.png',0)
-# median_lines = get_line_median(img, dilate=True)
-# plt.imshow(median_lines)
-#%%
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jul  6 14:53:07 2023
-
-@author: talha
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Jul  1 20:04:03 2023
-
-@author: talha
-"""
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-mpl.rcParams['figure.dpi']=300
-import cv2
-import numpy as np
-from skimage import measure
-from scipy import ndimage as ndi
-from skimage import morphology  
 import time
 
 
@@ -112,18 +53,6 @@ def get_extended_point(p1, p2, y_extend=360):
         
         return np.asarray([x, y_extend], dtype=np.int32)
     
-# def get_extended_point(p1, p2, y_extend):
-#     # Compute the slope of the line passing through p1 and p2
-#     slope = (p2[1] - p1[1]) / (p2[0] - p1[0])
-    
-#     # Compute the y-intercept of the line, c = y - mx
-#     intercept = p1[1] - slope * p1[0]
-    
-#     # Find the x-coordinate when y=720, x = (y - c) / m
-#     x = (y_extend - intercept) / slope
-    
-#     return np.asarray([x, y_extend], dtype=np.int32)
-
 def get_median_line(img, resizer=2, dilate=True):
     ow, oh = img.shape[1], img.shape[0]
     w, h = img.shape[1]//resizer, img.shape[0]//resizer 
@@ -174,12 +103,6 @@ def get_median_line(img, resizer=2, dilate=True):
                                     iterations = 1)
     
     img = cv2.resize(thinned_lines, (ow,oh), interpolation=cv2.INTER_NEAREST)
-    
-    # px = 25
-    # img[:px, :] = 0  # Top border
-    # img[-px:, :] = 0  # Bottom border
-    # img[:, :px] = 0  # Left border
-    # img[:, -px:] = 0  # Right border
     
     return img
     
