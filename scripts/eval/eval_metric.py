@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 18 14:35:31 2023
+Created on Sat Sep 23 14:59:15 2023
 
 @author: talha
 """
+
 
 import numpy as np
 from skimage.measure import label as sml
@@ -14,6 +15,55 @@ from fmutils import fmutils as fmu
 from tqdm import tqdm, trange
 from scipy.spatial import distance
 from scipy.interpolate import splprep, splev
+from skimage.morphology import skeletonize
+
+def completeness_score(pred, gt):
+    intersection = np.logical_and(pred, gt).sum()
+    union = np.logical_or(pred, gt).sum()
+    
+    # To avoid division by zero
+    if union == 0:
+        return 0
+    
+    return intersection / union
+
+def length_ratio(pred, gt):
+    length_pred = np.sum(pred)
+    length_gt = np.sum(gt)
+    
+    # To avoid division by zero
+    if length_gt == 0:
+        return 0
+    
+    return length_pred / length_gt
+
+def max_possible_smoothness(image_shape):
+    # Maximum gradient change for entire image would be twice the number of rows plus twice the number of columns
+    return 2 * image_shape[0] + 2 * image_shape[1]
+
+def normalize_smoothness(smoothness_val, image_shape):
+    maximum_smoothness = max_possible_smoothness(image_shape)
+    
+    # To avoid division by zero
+    if maximum_smoothness == 0:
+        return 0
+    
+    return smoothness_val / maximum_smoothness
+
+def smoothness_metric(pred):
+    pred = skeletonize(pred).astype(np.uint8)
+    # Calculate gradient
+    gradient_x = np.gradient(pred, axis=0)
+    gradient_y = np.gradient(pred, axis=1)
+    
+    total_gradient = np.sqrt(gradient_x**2 + gradient_y**2)
+    
+    return np.sum(total_gradient)
+
+def norm_smoothness_metric(pred):
+    smoothness_val = smoothness_metric(pred)
+    nsm = normalize_smoothness(smoothness_val, pred.shape)
+    return nsm 
 
 def calculate_metrics(gt, pred):
     # extract the line coordinates
@@ -64,10 +114,11 @@ def calculate_metrics(gt, pred):
 #     largestCC = labels == np.argmax(np.bincount(labels.flat)[1:])+1
 #     return largestCC
 
-gts = fmu.get_all_files('C:/Users/talha/Desktop/ibrahim/eval/gt/')
-preds = fmu.get_all_files('C:/Users/talha/Desktop/ibrahim/eval/pred/')
+gts = fmu.get_all_files('C:/Users/talha/Downloads/ibrahim/sandesh_/gt/')
+preds = fmu.get_all_files('C:/Users/talha/Downloads/ibrahim/sandesh_/pred/')
 
 mald, mlld, mrld, mcont = [],[],[],[]
+mlr, mcs, mnsm  = [], [], []
 for i in trange(len(gts), desc='Evaluating'):
 
     gt = cv2.imread(gts[i], 0)
@@ -86,6 +137,7 @@ for i in trange(len(gts), desc='Evaluating'):
     lines_pred = len(np.unique(mpred)[1:])
     
     single_ald, single_lald, single_rald, single_cont = [],[],[],[]
+    single_lr, single_cs, single_nsm = [], [], []
     for j in np.unique(mgt)[1:]:
             sgt = mgt.copy() #single gt
             sgt[sgt!=j] = 0
@@ -99,37 +151,65 @@ for i in trange(len(gts), desc='Evaluating'):
                 _, counts = np.unique(spred, return_counts=True)
                 if counts[1] > 256: # because if area is smalled then this the its noise not line.
                     robust_mean_ald, left_ald, right_ald, continuity_metric = calculate_metrics(sms(sgt).astype(np.uint8), sms(spred).astype(np.uint8))
+                    lr = length_ratio(spred, sgt)
+                    cs = completeness_score(spred, sgt)
+                    nsm = norm_smoothness_metric(spred)
                     # robust_mean_ald, left_ald, right_ald, continuity_metric = calculate_metrics(sgt, spred)
                 else:
                     robust_mean_ald, left_ald, right_ald, continuity_metric = 0, 0, 0, 0
+                    lr, cs, nsm = 0, 0, 0
                 
                 single_ald.append(robust_mean_ald)
                 single_lald.append(left_ald)
                 single_rald.append(right_ald)
                 single_cont.append(continuity_metric)
+                
+                single_lr.append(lr)
+                single_cs.append(cs)
+                single_nsm.append(nsm)
     
     if lines_gt == lines_pred and lines_gt != 1: # multi lines are detected
         ald = np.nanmean(np.partition(np.asarray(single_ald), lines_gt)[:lines_gt]) # get lowest three values and take mean
         lld = np.nanmean(np.partition(np.asarray(single_lald), lines_gt)[:lines_gt])
         rld = np.nanmean(np.partition(np.asarray(single_rald), lines_gt)[:lines_gt])
         con = np.nanmean(np.partition(np.asarray(single_cont), lines_gt)[:lines_gt])
+        
+        slr = np.nanmean(np.partition(np.asarray(single_lr), lines_gt)[:lines_gt])
+        scs = np.nanmean(np.partition(np.asarray(single_cs), lines_gt)[:lines_gt])
+        snsm = np.nanmean(np.partition(np.asarray(single_nsm), lines_gt)[:lines_gt])
+        
     elif len(single_ald) != 0: # if single or sopme lines are found
         ald = np.nanmean(np.min(np.asarray(single_ald))) # get lowest three values and take mean
         lld = np.nanmean(np.min(np.asarray(single_lald)))
         rld = np.nanmean(np.min(np.asarray(single_rald)))
         con = np.nanmean(np.min(np.asarray(single_cont)))
+        
+        slr = np.nanmean(np.min(np.asarray(single_lr)))
+        scs = np.nanmean(np.min(np.asarray(single_cs)))
+        snsm = np.nanmean(np.min(np.asarray(single_nsm)))
+        
     elif lines_gt == 0 or lines_pred == 0:
         ald, lld, rld, con = 0, 0, 0, 0
+        slr, scs, snsm = 0, 0, 0
     
     mald.append(ald)
     mlld.append(lld)
     mrld.append(rld)
     mcont.append(con)
-
+    
+    mlr.append(slr)
+    mcs.append(scs)
+    mnsm.append(snsm)
+    
 mald = np.nanmean(np.asarray(mald))
 mlld = np.nanmean(np.asarray(mlld))
 mrld = np.nanmean(np.asarray(mrld))
 mcont = np.nanmean(np.asarray(mcont))
 
+mlr = np.nanmean(np.asarray(mlr))
+mcs = np.nanmean(np.asarray(mcs))
+mnsm = np.nanmean(np.asarray(mnsm))
 
-print(mald, mlld, mrld, mcont)
+
+print(f'\nMean ALD:{mald}; \nMean LLD:{mlld}, \nMean RLD:{mrld}, \nMeanCont: {mcont}')
+print(f'\nMean Length Ratio:{mlr}, \nMean Completeness Score:{mcs}, \nMean Smoothness:{mnsm}')
