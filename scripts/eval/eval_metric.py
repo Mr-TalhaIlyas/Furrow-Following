@@ -16,6 +16,10 @@ from tqdm import tqdm, trange
 from scipy.spatial import distance
 from scipy.interpolate import splprep, splev
 from skimage.morphology import skeletonize
+from skimage.morphology import remove_small_objects
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['figure.dpi']=300
 
 def completeness_score(pred, gt):
     intersection = np.logical_and(pred, gt).sum()
@@ -114,8 +118,11 @@ def calculate_metrics(gt, pred):
 #     largestCC = labels == np.argmax(np.bincount(labels.flat)[1:])+1
 #     return largestCC
 
-gts = fmu.get_all_files('C:/Users/talha/Downloads/ibrahim/sandesh_/gt/')
-preds = fmu.get_all_files('C:/Users/talha/Downloads/ibrahim/sandesh_/pred/')
+# gts = fmu.get_all_files('D:/RobotVision/talha_bhai_model_new_results/results_prposed/gt_/')
+# preds = fmu.get_all_files('D:/RobotVision/talha_bhai_model_new_results/results_prposed/pred_/')
+gts = fmu.get_all_files('D:/RobotVision/pretrained_deeplabv3plus/pred_rgb/gt_rgb/')
+preds = fmu.get_all_files('D:/RobotVision/pretrained_deeplabv3plus/pred_rgb/pred_rgb/')
+
 
 mald, mlld, mrld, mcont = [],[],[],[]
 mlr, mcs, mnsm  = [], [], []
@@ -124,11 +131,23 @@ for i in trange(len(gts), desc='Evaluating'):
     gt = cv2.imread(gts[i], 0)
     pred = cv2.imread(preds[i], 0)
     
-    # remove noist
-    pred = cv2.erode(pred.astype(np.uint8),
-                  cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)),
-                #   np.ones((3,3),np.uint8),
-                  iterations = 1)
+    _,gt = cv2.threshold(gt, 0, 1, cv2.THRESH_BINARY)
+    _,pred = cv2.threshold(pred, 0, 1, cv2.THRESH_BINARY)
+    
+    # # remove noist
+    # gt = cv2.erode(gt.astype(np.uint8),
+    #               cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)),
+    #             #   np.ones((3,3),np.uint8),
+    #               iterations = 1)
+    # # remove noist
+    # pred = cv2.erode(pred.astype(np.uint8),
+    #               cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)),
+    #             #   np.ones((3,3),np.uint8),
+    #               iterations = 1)
+    
+    # remove small noisy areas
+    gt = remove_small_objects(gt.astype(bool), min_size=256).astype(np.uint8)
+    pred = remove_small_objects(pred.astype(bool), min_size=256).astype(np.uint8)
     
     mgt = sml(gt) #multi gt
     mpred = sml(pred)
@@ -211,5 +230,5 @@ mcs = np.nanmean(np.asarray(mcs))
 mnsm = np.nanmean(np.asarray(mnsm))
 
 
-print(f'\nMean ALD:{mald}; \nMean LLD:{mlld}, \nMean RLD:{mrld}, \nMeanCont: {mcont}')
+print(f'\nMean ALD:{mald}; \nMean LLD:{mlld}, \nMean RLD:{mrld}, \nMeanCont: {mcont} <= DON"T USE')
 print(f'\nMean Length Ratio:{mlr}, \nMean Completeness Score:{mcs}, \nMean Smoothness:{mnsm}')
